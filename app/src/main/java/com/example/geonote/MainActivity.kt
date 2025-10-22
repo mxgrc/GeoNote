@@ -3,45 +3,53 @@ package com.example.geonote
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.geonote.ui.theme.GeoNoteTheme
+import androidx.activity.viewModels
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.geonote.ui.NoteCreateScreen
+import com.example.geonote.ui.NoteListScreen
+import com.example.geonote.viewmodel.NoteVMFactory
+import com.example.geonote.viewmodel.NoteViewModel
 
 class MainActivity : ComponentActivity() {
+
+    private val vm: NoteViewModel by viewModels { NoteVMFactory(application) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            GeoNoteTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            MaterialTheme {
+                Surface {
+                    val nav = rememberNavController()
+
+                    // 👇 Colecta el flujo de notas como un estado observable
+                    val notes by vm.notes.collectAsStateWithLifecycle()
+
+                    NavHost(navController = nav, startDestination = "list") {
+                        composable("list") {
+                            NoteListScreen(
+                                notes = notes,
+                                onAdd = { nav.navigate("create") },
+                                onArchive = { vm.archive(it) }
+                            )
+                        }
+
+                        composable("create") {
+                            NoteCreateScreen(
+                                onSave = { t, b, lat, lon, acc, tags ->
+                                    vm.saveNote(t, b, lat, lon, acc, tags)
+                                },
+                                onBack = { nav.popBackStack() }
+                            )
+                        }
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    GeoNoteTheme {
-        Greeting("Android")
     }
 }
