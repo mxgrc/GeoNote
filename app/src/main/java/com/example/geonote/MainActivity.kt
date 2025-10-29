@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
@@ -26,12 +28,15 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 Surface {
                     val nav = rememberNavController()
-
-                    // 👇 Colecta el flujo de notas como un estado observable
                     val notes by vm.notes.collectAsStateWithLifecycle()
 
                     NavHost(navController = nav, startDestination = "list") {
-                        composable("list") {
+                        
+                        composable(
+                            route = "list",
+                            exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) }
+                        ) {
                             NoteListScreen(
                                 notes = notes,
                                 onAdd = { nav.navigate("create") },
@@ -39,11 +44,13 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        composable("create") {
+                        composable(
+                            route = "create",
+                            enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) }
+                        ) {
                             NoteCreateScreen(
-                                onSave = { t, b, lat, lon, acc, tags ->
-                                    vm.saveNote(t, b, lat, lon, acc, tags)
-                                },
+                                viewModel = vm,
                                 onBack = { nav.popBackStack() }
                             )
                         }
