@@ -95,14 +95,13 @@ fun NoteCreateScreen(
             }
         }
     )
-
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted ->
             hasCameraPermission = granted
             if (granted) {
                 tempImageUri = createImageUri(ctx)
-                cameraLauncher.launch(tempImageUri)
+                cameraLauncher.launch(tempImageUri) 
             }
         }
     )
