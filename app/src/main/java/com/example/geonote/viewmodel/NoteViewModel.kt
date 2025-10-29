@@ -17,7 +17,6 @@ class NoteViewModel(
     private val repo: NoteRepository
 ) : ViewModel() {
 
-    // 1. Flujo para la lista de notas
     val notes: StateFlow<List<NoteEntity>> =
         repo.getNotes().stateIn(
             scope = viewModelScope,
@@ -25,30 +24,26 @@ class NoteViewModel(
             initialValue = emptyList()
         )
 
-    // 2. Flujo para el error de validación
     private val _validationError = MutableStateFlow<String?>(null)
     val validationError: StateFlow<String?> = _validationError.asStateFlow()
 
-    // 3. Flujo para el evento de guardado exitoso (el que acabamos de agregar)
     private val _saveSuccess = MutableSharedFlow<Unit>()
     val saveSuccess = _saveSuccess.asSharedFlow()
 
-    /** Limpia el error de validación (para que la UI lo oculte) */
     fun clearError() {
         _validationError.value = null
     }
 
-    /** Guarda la nota, validando los campos primero */
     fun saveNote(
         title: String,
         body: String,
         lat: Double?,
         lon: Double?,
         accuracy: Float?,
-        tags: String?
+        tags: String?,
+        imageUri: String?
     ) {
 
-        // Lógica de Validación
         if (title.isBlank()) {
             _validationError.value = "El título no puede estar vacío"
             return
@@ -59,7 +54,6 @@ class NoteViewModel(
             return
         }
 
-        // Si la validación pasa, se guarda
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val note = NoteEntity(
@@ -71,16 +65,15 @@ class NoteViewModel(
                 createdAt = now,
                 updatedAt = now,
                 tags = tags?.trim().takeUnless { it.isNullOrBlank() },
-                archived = false
+                archived = false,
+                imageUri = imageUri
             )
             repo.save(note)
             
-            // Avisa a la UI que se guardó exitosamente
             _saveSuccess.emit(Unit) 
         }
     }
 
-    /** Archiva una nota */
     fun archive(id: Long) {
         viewModelScope.launch { repo.archive(id) }
     }
