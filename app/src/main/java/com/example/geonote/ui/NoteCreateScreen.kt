@@ -13,12 +13,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.geonote.model.LocationProvider
+import com.example.geonote.viewmodel.NoteViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteCreateScreen(
-    onSave: (title: String, body: String, lat: Double?, lon: Double?, acc: Float?, tags: String?) -> Unit,
+    viewModel: NoteViewModel,
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -29,10 +30,17 @@ fun NoteCreateScreen(
     var tags by remember { mutableStateOf("") }
 
     var location by remember { mutableStateOf<Location?>(null) }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var loadingLocation by remember { mutableStateOf(false) }
+    var locationError by remember { mutableStateOf<String?>(null) }
 
-    // Estado de permiso
+    val validationError by viewModel.validationError.collectAsState()
+
+    LaunchedEffect(key1 = Unit) {
+        viewModel.saveSuccess.collect {
+            onBack()
+        }
+    }
+
     val hasFinePermission = remember {
         ContextCompat.checkSelfPermission(
             ctx, Manifest.permission.ACCESS_FINE_LOCATION
@@ -45,7 +53,7 @@ fun NoteCreateScreen(
     ) { granted ->
         fineGranted = granted
         if (!granted) {
-            error = "Permiso de ubicación denegado. Puedes guardar la nota sin posición."
+            locationError = "Permiso denegado. Puedes guardar sin posición."
         }
     }
 
@@ -53,8 +61,21 @@ fun NoteCreateScreen(
         if (!fineGranted) requestFinePermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
+    suspend fun fetchLocation() {
+        try {
+            loadingLocation = true
+            val provider = LocationProvider(ctx)
+            location = provider.getCurrentLocation()
+            if (location == null) locationError = "No se pudo obtener ubicación."
+        } catch (e: Exception) {
+            locationError = e.message ?: "Error al obtener ubicación."
+        } finally {
+            loadingLocation = false
+        }
+    }
+
     fun saveNow() {
-        onSave(
+        viewModel.saveNote(
             title,
             body,
             location?.latitude,
@@ -62,34 +83,41 @@ fun NoteCreateScreen(
             location?.accuracy,
             tags
         )
-        onBack()
     }
 
-
-    suspend fun fetchLocation() {
-        try {
-            loading = true
-            val provider = LocationProvider(ctx)
-            location = provider.getCurrentLocation()
-            if (location == null) error = "No se pudo obtener ubicación."
-        } catch (e: Exception) {
-            error = e.message ?: "Error al obtener ubicación."
-        } finally {
-            loading = false
-        }
-    }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Nueva nota") }) }) { pad ->
         Column(Modifier.padding(pad).padding(16.dp)) {
             OutlinedTextField(
-                value = title, onValueChange = { title = it },
-                label = { Text("Título") }, modifier = Modifier.fillMaxWidth()
+                value = title,
+                onValueChange = {
+                    title = it
+                    viewModel.clearError()
+                },
+                label = { Text("Título") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = validationError?.contains("Título", true) == true
             )
+            if (validationError?.contains("Título", true) == true) {
+                Text(validationError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+            }
+
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
-                value = body, onValueChange = { body = it },
-                label = { Text("Contenido") }, modifier = Modifier.fillMaxWidth(), minLines = 4
+                value = body,
+                onValueChange = {
+                    body = it
+                    viewModel.clearError()
+                },
+                label = { Text("Contenido") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 4,
+                isError = validationError?.contains("Contenido", true) == true
             )
+            if (validationError?.contains("Contenido", true) == true) {
+                Text(validationError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+            }
+
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = tags, onValueChange = { tags = it },
@@ -106,11 +134,11 @@ fun NoteCreateScreen(
                             scope.launch { fetchLocation() }
                         }
                     },
-                    enabled = !loading
+                    enabled = !loadingLocation
                 ) {
                     Text(
                         when {
-                            loading -> "Obteniendo…"
+                            loadingLocation -> "Obteniendo…"
                             location != null -> "Ubicación lista ✓"
                             else -> "Obtener ubicación"
                         }
@@ -119,16 +147,16 @@ fun NoteCreateScreen(
                 Spacer(Modifier.width(12.dp))
                 Button(
                     onClick = { saveNow() },
-                    enabled = title.isNotBlank() && !loading
+                    enabled = !loadingLocation
                 ) { Text("Guardar") }
             }
 
-            if (loading) {
+            if (loadingLocation) {
                 Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
 
-            error?.let {
+            locationError?.let {
                 Spacer(Modifier.height(8.dp))
                 Text("⚠️ $it", color = MaterialTheme.colorScheme.error)
             }
