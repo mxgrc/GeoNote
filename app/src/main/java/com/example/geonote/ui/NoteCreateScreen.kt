@@ -1,20 +1,62 @@
 package com.example.geonote.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import coil.compose.AsyncImage
 import com.example.geonote.model.LocationProvider
 import com.example.geonote.viewmodel.NoteViewModel
 import kotlinx.coroutines.launch
+import java.io.File
+
+fun createImageUri(context: Context): Uri {
+    val imageDir = File(context.filesDir, "images")
+    if (!imageDir.exists()) imageDir.mkdir()
+    val file = File(imageDir, "IMG_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        file
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +74,38 @@ fun NoteCreateScreen(
     var location by remember { mutableStateOf<Location?>(null) }
     var loadingLocation by remember { mutableStateOf(false) }
     var locationError by remember { mutableStateOf<String?>(null) }
+
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                ctx,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            if (success) {
+                imageUri = tempImageUri
+            }
+        }
+    )
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            hasCameraPermission = granted
+            if (granted) {
+                tempImageUri = createImageUri(ctx)
+                cameraLauncher.launch(tempImageUri)
+            }
+        }
+    )
 
     val validationError by viewModel.validationError.collectAsState()
 
@@ -81,13 +155,33 @@ fun NoteCreateScreen(
             location?.latitude,
             location?.longitude,
             location?.accuracy,
-            tags
+            tags,
+            imageUri?.toString()
         )
     }
 
 
     Scaffold(topBar = { TopAppBar(title = { Text("Nueva nota") }) }) { pad ->
-        Column(Modifier.padding(pad).padding(16.dp)) {
+        Column(
+            Modifier
+                .padding(pad)
+                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+
+            if (imageUri != null) {
+                AsyncImage(
+                    model = imageUri,
+                    contentDescription = "Foto de la nota",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(4f / 3f),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+            
             OutlinedTextField(
                 value = title,
                 onValueChange = {
@@ -125,7 +219,10 @@ fun NoteCreateScreen(
             )
             Spacer(Modifier.height(12.dp))
 
-            Row {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Button(
                     onClick = {
                         if (!fineGranted) {
@@ -144,7 +241,20 @@ fun NoteCreateScreen(
                         }
                     )
                 }
-                Spacer(Modifier.width(12.dp))
+                
+                Button(
+                    onClick = {
+                        if (hasCameraPermission) {
+                            tempImageUri = createImageUri(ctx)
+                            cameraLauncher.launch(tempImageUri)
+                        } else {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    }
+                ) {
+                    Text("Foto")
+                }
+
                 Button(
                     onClick = { saveNow() },
                     enabled = !loadingLocation
