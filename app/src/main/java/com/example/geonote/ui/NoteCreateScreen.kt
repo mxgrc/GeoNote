@@ -107,6 +107,7 @@ val cameraPermissionLauncher = rememberLauncherForActivityResult(
         }
     )
 
+
     val validationError by viewModel.validationError.collectAsState()
 
     LaunchedEffect(key1 = Unit) {
