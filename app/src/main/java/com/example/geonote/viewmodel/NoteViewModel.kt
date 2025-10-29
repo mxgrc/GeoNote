@@ -17,6 +17,7 @@ class NoteViewModel(
     private val repo: NoteRepository
 ) : ViewModel() {
 
+
     // 1. Flujo para la lista de notas
     val notes: StateFlow<List<NoteEntity>> =
         repo.getNotes().stateIn(
@@ -24,6 +25,13 @@ class NoteViewModel(
             started = SharingStarted.Lazily,
             initialValue = emptyList()
         )
+
+    private val _validationError = MutableStateFlow<String?>(null)
+    val validationError: StateFlow<String?> = _validationError.asStateFlow()
+
+    private val _saveSuccess = MutableSharedFlow<Unit>()
+    val saveSuccess = _saveSuccess.asSharedFlow()
+
 
     // 2. Flujo para el error de validación
     private val _validationError = MutableStateFlow<String?>(null)
@@ -38,6 +46,7 @@ class NoteViewModel(
         _validationError.value = null
     }
 
+
     /** Guarda la nota, validando los campos primero */
     fun saveNote(
         title: String,
@@ -45,8 +54,10 @@ class NoteViewModel(
         lat: Double?,
         lon: Double?,
         accuracy: Float?,
-        tags: String?
+        tags: String?,
+        imageUri: String?
     ) {
+
 
         // Lógica de Validación
         if (title.isBlank()) {
@@ -58,6 +69,7 @@ class NoteViewModel(
             _validationError.value = "El contenido no puede estar vacío"
             return
         }
+
 
         // Si la validación pasa, se guarda
         viewModelScope.launch {
@@ -71,14 +83,17 @@ class NoteViewModel(
                 createdAt = now,
                 updatedAt = now,
                 tags = tags?.trim().takeUnless { it.isNullOrBlank() },
-                archived = false
+                archived = false,
+                imageUri = imageUri
             )
             repo.save(note)
             
+
             // Avisa a la UI que se guardó exitosamente
             _saveSuccess.emit(Unit) 
         }
     }
+
 
     /** Archiva una nota */
     fun archive(id: Long) {
