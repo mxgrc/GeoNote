@@ -100,8 +100,9 @@ val cameraPermissionLauncher = rememberLauncherForActivityResult(
         onResult = { granted ->
             hasCameraPermission = granted
             if (granted) {
-                tempImageUri = createImageUri(ctx)
-                cameraLauncher.launch(tempImageUri) 
+                val newUri = createImageUri(ctx)
+                tempImageUri = newUri
+                cameraLauncher.launch(newUri)
             }
         }
     )
