@@ -4,19 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geonote.model.NoteEntity
 import com.example.geonote.repository.NoteRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel expone la lista de notas y operaciones de guardar/archivar.
- */
 class NoteViewModel(
     private val repo: NoteRepository
 ) : ViewModel() {
 
-    /** Flujo con estado para que Compose observe cambios automáticamente */
     val notes: StateFlow<List<NoteEntity>> =
         repo.getNotes().stateIn(
             scope = viewModelScope,
@@ -24,7 +22,13 @@ class NoteViewModel(
             initialValue = emptyList()
         )
 
-    /** Guarda una nueva nota o actualiza si ya existe */
+    private val _validationError = MutableStateFlow<String?>(null)
+    val validationError: StateFlow<String?> = _validationError.asStateFlow()
+
+    fun clearError() {
+        _validationError.value = null
+    }
+
     fun saveNote(
         title: String,
         body: String,
@@ -33,6 +37,17 @@ class NoteViewModel(
         accuracy: Float?,
         tags: String?
     ) {
+
+        if (title.isBlank()) {
+            _validationError.value = "El título no puede estar vacío"
+            return
+        }
+
+        if (body.isBlank()) {
+            _validationError.value = "El contenido no puede estar vacío"
+            return
+        }
+
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             val note = NoteEntity(
@@ -50,7 +65,6 @@ class NoteViewModel(
         }
     }
 
-    /** Archiva una nota por id */
     fun archive(id: Long) {
         viewModelScope.launch { repo.archive(id) }
     }
