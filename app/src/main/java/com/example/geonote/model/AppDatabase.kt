@@ -10,7 +10,7 @@ import androidx.room.RoomDatabase
  * - Contiene la tabla "notes" (NoteEntity)
  * - Expone el DAO NoteDao para acceder a los datos.
  */
-@Database(entities = [NoteEntity::class], version = 1, exportSchema = false)
+@Database(entities = [NoteEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     // Acceso al DAO
