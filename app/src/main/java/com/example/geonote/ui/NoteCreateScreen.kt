@@ -7,34 +7,14 @@ import android.location.Location
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -77,49 +57,34 @@ fun NoteCreateScreen(
 
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
-    
+
     var hasCameraPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                ctx,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         )
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture(),
-        onResult = { success ->
-            if (success) {
-                imageUri = tempImageUri
-            }
-        }
-    )
-val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            hasCameraPermission = granted
-            if (granted) {
-                val newUri = createImageUri(ctx)
-                tempImageUri = newUri
-                cameraLauncher.launch(newUri)
-            }
-        }
-    )
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) imageUri = tempImageUri
+    }
 
-
-    val validationError by viewModel.validationError.collectAsState()
-
-    LaunchedEffect(key1 = Unit) {
-        viewModel.saveSuccess.collect {
-            onBack()
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+        if (granted) {
+            val newUri = createImageUri(ctx)
+            tempImageUri = newUri
+            cameraLauncher.launch(newUri)
         }
     }
 
+    val validationError by viewModel.validationError.collectAsState()
+
     val hasFinePermission = remember {
-        ContextCompat.checkSelfPermission(
-            ctx, Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
     var fineGranted by remember { mutableStateOf(hasFinePermission) }
 
@@ -127,155 +92,225 @@ val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         fineGranted = granted
-        if (!granted) {
-            locationError = "Permiso denegado. Puedes guardar sin posición."
+        if (!granted) locationError = "Permiso denegado"
+    }
+
+    LaunchedEffect(key1 = Unit) {
+        viewModel.saveSuccess.collect {
+            onBack()
         }
     }
 
-    fun askLocationPermission() {
-        if (!fineGranted) requestFinePermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-    }
-
-    suspend fun fetchLocation() {
-        try {
-            loadingLocation = true
-            val provider = LocationProvider(ctx)
-            location = provider.getCurrentLocation()
-            if (location == null) locationError = "No se pudo obtener ubicación."
-        } catch (e: Exception) {
-            locationError = e.message ?: "Error al obtener ubicación."
-        } finally {
-            loadingLocation = false
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Nueva nota") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
         }
-    }
-
-    fun saveNow() {
-        viewModel.saveNote(
-            title,
-            body,
-            location?.latitude,
-            location?.longitude,
-            location?.accuracy,
-            tags,
-            imageUri?.toString()
-        )
-    }
-
-
-    Scaffold(topBar = { TopAppBar(title = { Text("Nueva nota") }) }) { pad ->
+    ) { pad ->
         Column(
             Modifier
                 .padding(pad)
-                .padding(16.dp)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-
             if (imageUri != null) {
                 AsyncImage(
                     model = imageUri,
                     contentDescription = "Foto de la nota",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(4f / 3f),
+                        .aspectRatio(16f / 9f),
                     contentScale = ContentScale.Crop
                 )
                 Spacer(Modifier.height(8.dp))
             }
-            
-            OutlinedTextField(
-                value = title,
-                onValueChange = {
-                    title = it
-                    viewModel.clearError()
-                },
-                label = { Text("Título") },
-                modifier = Modifier.fillMaxWidth(),
-                isError = validationError?.contains("Título", true) == true
-            )
-            if (validationError?.contains("Título", true) == true) {
-                Text(validationError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-            }
 
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = body,
-                onValueChange = {
-                    body = it
-                    viewModel.clearError()
-                },
-                label = { Text("Contenido") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 4,
-                isError = validationError?.contains("Contenido", true) == true
-            )
-            if (validationError?.contains("Contenido", true) == true) {
-                Text(validationError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-            }
-
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = tags, onValueChange = { tags = it },
-                label = { Text("Etiquetas") }, modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Button(
-                    onClick = {
-                        if (!fineGranted) {
-                            askLocationPermission()
-                        } else {
-                            scope.launch { fetchLocation() }
-                        }
+            Column(Modifier.padding(16.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = {
+                        title = it
+                        viewModel.clearError()
                     },
-                    enabled = !loadingLocation
-                ) {
+                    label = { Text("Título") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = validationError?.contains("Título", true) == true,
+                    leadingIcon = { Icon(Icons.Default.Title, null) }
+                )
+                if (validationError?.contains("Título", true) == true) {
                     Text(
-                        when {
-                            loadingLocation -> "Obteniendo…"
-                            location != null -> "Ubicación lista ✓"
-                            else -> "Obtener ubicación"
-                        }
+                        validationError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
                     )
                 }
-                Button(
-                    onClick = {
-                        if (hasCameraPermission) {
-                            val newUri = createImageUri(ctx)
-                            tempImageUri = newUri
-                            cameraLauncher.launch(newUri)
-                        } else {
-                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                        }
-                    }
-                ) {
-                    Text("Foto")
+
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = body,
+                    onValueChange = {
+                        body = it
+                        viewModel.clearError()
+                    },
+                    label = { Text("Contenido") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 6,
+                    isError = validationError?.contains("Contenido", true) == true
+                )
+                if (validationError?.contains("Contenido", true) == true) {
+                    Text(
+                        validationError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    )
                 }
 
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = tags,
+                    onValueChange = { tags = it },
+                    label = { Text("Etiquetas (separadas por comas)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = { Icon(Icons.Default.Tag, null) }
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            if (!fineGranted) {
+                                requestFinePermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            } else {
+                                scope.launch {
+                                    try {
+                                        loadingLocation = true
+                                        locationError = null
+                                        val provider = LocationProvider(ctx)
+                                        location = provider.getCurrentLocation()
+                                        if (location == null) locationError = "No se pudo obtener ubicación"
+                                    } catch (e: Exception) {
+                                        locationError = e.message ?: "Error al obtener ubicación"
+                                    } finally {
+                                        loadingLocation = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !loadingLocation,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (location != null) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(
+                            if (location != null) Icons.Default.CheckCircle else Icons.Default.LocationOn,
+                            null,
+                            Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(when {
+                            loadingLocation -> "..."
+                            location != null -> "✓"
+                            else -> "Ubicación"
+                        })
+                    }
+
+                    Button(
+                        onClick = {
+                            if (hasCameraPermission) {
+                                val newUri = createImageUri(ctx)
+                                tempImageUri = newUri
+                                cameraLauncher.launch(newUri)
+                            } else {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Foto")
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
                 Button(
-                    onClick = { saveNow() },
-                    enabled = !loadingLocation
-                ) { Text("Guardar") }
-            }
+                    onClick = {
+                        viewModel.saveNote(
+                            title = title,
+                            body = body,
+                            lat = location?.latitude,
+                            lon = location?.longitude,
+                            accuracy = location?.accuracy,
+                            tags = tags,
+                            imageUri = imageUri?.toString()
+                        )
+                    },
+                    enabled = !loadingLocation,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Icon(Icons.Default.Save, null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Guardar Nota", style = MaterialTheme.typography.labelLarge)
+                }
 
-            if (loadingLocation) {
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-            }
+                if (loadingLocation) {
+                    Spacer(Modifier.height(12.dp))
+                    LinearProgressIndicator(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
+                }
 
-            locationError?.let {
-                Spacer(Modifier.height(8.dp))
-                Text("⚠️ $it", color = MaterialTheme.colorScheme.error)
-            }
+                locationError?.let {
+                    Spacer(Modifier.height(12.dp))
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(12.dp)) {
+                            Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error)
+                            Spacer(Modifier.width(8.dp))
+                            Text(it, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
 
-            location?.let {
-                Spacer(Modifier.height(8.dp))
-                Text("📍 ${it.latitude}, ${it.longitude} • ±${it.accuracy.toInt()} m")
+                location?.let {
+                    Spacer(Modifier.height(12.dp))
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(12.dp)) {
+                            Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.secondary)
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text("Ubicación obtenida", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Text("${it.latitude.format(5)}, ${it.longitude.format(5)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Text("Precisión: ±${it.accuracy.toInt()} m", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
+
+private fun Double.format(digits: Int) = "%.${digits}f".format(this)

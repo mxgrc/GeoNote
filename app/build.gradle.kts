@@ -17,6 +17,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Google Maps API Key
+        manifestPlaceholders["MAPS_API_KEY"] = "AIzaSyAOINRRbpFd4XmnJrc1rIK1VQ330RjscpE"
     }
 
     buildTypes {
@@ -40,6 +43,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -57,18 +61,31 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
+    // Coil para imágenes
     implementation("io.coil-kt:coil-compose:2.5.0")
 
+    // Room
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
 
+    // Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
+    // Google Maps
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
+    implementation("com.google.maps.android:maps-compose:4.3.3")
+    implementation("com.google.maps.android:maps-compose-utils:4.3.3")
+
+    // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
 
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
+    // Material Icons Extended
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
