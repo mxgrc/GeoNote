@@ -15,4 +15,5 @@ data class NoteEntity(
     val updatedAt: Long = System.currentTimeMillis(),
     val tags: String? = null,
     val archived: Boolean = false,
-    val imageUri: String
+    val imageUri: String? = null
+)
