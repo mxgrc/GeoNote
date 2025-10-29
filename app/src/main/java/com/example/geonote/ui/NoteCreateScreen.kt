@@ -240,12 +240,12 @@ val cameraPermissionLauncher = rememberLauncherForActivityResult(
                         }
                     )
                 }
-                
                 Button(
                     onClick = {
                         if (hasCameraPermission) {
-                            tempImageUri = createImageUri(ctx)
-                            cameraLauncher.launch(tempImageUri)
+                            val newUri = createImageUri(ctx)
+                            tempImageUri = newUri
+                            cameraLauncher.launch(newUri)
                         } else {
                             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                         }
