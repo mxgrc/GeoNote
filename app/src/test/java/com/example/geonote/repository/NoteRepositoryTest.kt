@@ -11,10 +11,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Tests unitarios para NoteRepository
- * Cubre: getNotes(), get(), save(), archive(), delete()
- */
+
 class NoteRepositoryTest {
 
     private lateinit var repository: NoteRepository
