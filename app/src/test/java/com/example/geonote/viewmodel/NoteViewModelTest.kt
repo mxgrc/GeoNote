@@ -16,10 +16,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * Tests unitarios para NoteViewModel
- * Cubre: validación, guardado, edición, carga de notas, archivado
- */
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class NoteViewModelTest {
 
